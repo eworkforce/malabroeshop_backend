@@ -1,0 +1,126 @@
+from datetime import timedelta
+from typing import Any
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+
+from app.crud import user as crud_user
+from app.schemas import user as schemas_user
+from app.db.session import get_db
+from app.core.auth import create_access_token, verify_token, ACCESS_TOKEN_EXPIRE_MINUTES
+
+router = APIRouter()
+
+# OAuth2 scheme for token authentication
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
+
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    """Get current authenticated user from JWT token."""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    email = verify_token(token)
+    if email is None:
+        raise credentials_exception
+    
+    user = crud_user.get_user_by_email(db, email=email)
+    if user is None:
+        raise credentials_exception
+    
+    return user
+
+
+def get_current_active_user(current_user: schemas_user.User = Depends(get_current_user)):
+    """Get current active user."""
+    if not crud_user.is_active(current_user):
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+@router.post("/register", response_model=schemas_user.User)
+def register_user(
+    *,
+    db: Session = Depends(get_db),
+    user_in: schemas_user.UserRegister
+) -> Any:
+    """Register a new user."""
+    # Check if user already exists
+    user = crud_user.get_user_by_email(db, email=user_in.email)
+    if user:
+        raise HTTPException(
+            status_code=400,
+            detail="The user with this email already exists in the system.",
+        )
+    
+    # Create new user
+    user_create = schemas_user.UserCreate(
+        email=user_in.email,
+        password=user_in.password,
+        full_name=user_in.full_name
+    )
+    user = crud_user.create_user(db, user=user_create)
+    return user
+
+
+@router.post("/login", response_model=schemas_user.Token)
+def login_user(
+    db: Session = Depends(get_db),
+    form_data: OAuth2PasswordRequestForm = Depends()
+) -> Any:
+    """Login user and return JWT token."""
+    user = crud_user.authenticate_user(db, email=form_data.username, password=form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    elif not crud_user.is_active(user):
+        raise HTTPException(status_code=400, detail="Inactive user")
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
+    )
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
+
+
+@router.post("/login-json", response_model=schemas_user.Token)
+def login_user_json(
+    *,
+    db: Session = Depends(get_db),
+    user_in: schemas_user.UserLogin
+) -> Any:
+    """Login user with JSON payload and return JWT token."""
+    user = crud_user.authenticate_user(db, email=user_in.email, password=user_in.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+        )
+    elif not crud_user.is_active(user):
+        raise HTTPException(status_code=400, detail="Inactive user")
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
+    )
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
+
+
+@router.get("/me", response_model=schemas_user.User)
+def read_user_me(
+    current_user: schemas_user.User = Depends(get_current_active_user),
+) -> Any:
+    """Get current user information."""
+    return current_user
