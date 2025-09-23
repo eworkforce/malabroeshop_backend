@@ -55,7 +55,7 @@ class Settings(BaseSettings):
         return self.DATABASE_URL
 
     @property
-    def cors_origins_list(self) -> list[str]:
+    def cors_origins_list(self) -> List[str]:
         """Convert CORS origins string to list"""
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
