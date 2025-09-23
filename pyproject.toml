@@ -1,0 +1,58 @@
+[tool.flake8]
+exclude = [
+    "*.json",
+    "*.md", 
+    "*.vue",
+    "*.js",
+    "*.ts",
+    "*.html",
+    "*.css",
+    "*.scss",
+    ".gitignore",
+    ".env*",
+    "node_modules",
+    "dist",
+    ".windsurf",
+    ".clinerules",
+    ".kombai",
+    ".codacy",
+    "_ARCHIVES"
+]
+
+[tool.pylint]
+ignore-patterns = [
+    ".*\\.json$",
+    ".*\\.md$",
+    ".*\\.vue$",
+    ".*\\.js$",
+    ".*\\.ts$",
+    ".*\\.html$",
+    ".*\\.css$",
+    ".*\\.scss$",
+    ".*\\.gitignore$",
+    ".*\\.env.*$"
+]
+
+[tool.black]
+extend-exclude = '''
+/(
+    \.git
+  | \.windsurf
+  | \.clinerules
+  | \.kombai
+  | \.codacy
+  | _ARCHIVES
+  | node_modules
+  | dist
+  | .*\.json
+  | .*\.md
+  | .*\.vue
+  | .*\.js
+  | .*\.ts
+  | .*\.html
+  | .*\.css
+  | .*\.scss
+  | \.gitignore
+  | \.env.*
+)/
+'''

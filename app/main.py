@@ -37,27 +37,26 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # Initialize MCP Server for AI Assistant
-try:
-    from fastapi_mcp import FastApiMCP
+# try:
+#     from fastapi_mcp import FastApiMCP
     
-    # Create MCP server based on our FastAPI app
-    mcp = FastApiMCP(app)
+#     # Create MCP server based on our FastAPI app
+#     mcp = FastApiMCP(app)
     
-    # Mount the MCP server at /mcp endpoint
-    mcp.mount_http()
+#     # Mount the MCP server at /mcp endpoint
+#     mcp.mount_http()
     
-    print("✅ MCP Server initialized successfully at /mcp")
+#     print("✅ MCP Server initialized successfully at /mcp")
     
-except ImportError:
-    print("⚠️  FastAPI-MCP not installed. AI Assistant features disabled.")
-    print("   Run: pip install fastapi-mcp")
+# except ImportError:
+#     print("⚠️  FastAPI-MCP not installed. AI Assistant features disabled.")
+#     print("   Run: pip install fastapi-mcp")
 
 @app.get("/")
 def read_root():
     return {
         "message": "Welcome to MALABRO eShop API", 
-        "features": ["REST API", "AI Assistant MCP Server"],
-        "mcp_endpoint": "/mcp"
+        "features": ["REST API"],
     }
 
 @app.get("/health")
@@ -65,7 +64,6 @@ def health_check():
     return {
         "status": "healthy",
         "api_version": "1.0.0",
-        "mcp_enabled": True
     }
 
 if __name__ == "__main__":

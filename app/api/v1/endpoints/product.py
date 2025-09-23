@@ -141,13 +141,33 @@ def update_product(
     return product
 
 
+from sqlalchemy.orm import joinedload
+
+# ... (other imports)
+
 @router.delete("/{product_id}", response_model=schemas.Product)
 def delete_product(*, db: Session = Depends(get_db), product_id: int) -> Any:
-    """Delete a product."""
-    product = crud.product.get(db=db, id=product_id)
+    """
+    Delete a product after eagerly loading its relationships to prevent DetachedInstanceError.
+    """
+    # Eagerly load relationships to prevent DetachedInstanceError during serialization
+    product = (
+        db.query(models.Product)
+        .options(
+            joinedload(models.Product.category),
+            joinedload(models.Product.unit_of_measure),
+        )
+        .filter(models.Product.id == product_id)
+        .first()
+    )
+
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    product = crud.product.remove(db=db, id=product_id)
+
+    # Now, perform the deletion
+    db.delete(product)
+    db.commit()
+
     return product
 
 

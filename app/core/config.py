@@ -19,12 +19,12 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
 
     # Supabase Configuration
-    SUPABASE_URL: str = Field(..., env="SUPABASE_URL")
-    SUPABASE_KEY: str = Field(..., env="SUPABASE_KEY")
+    SUPABASE_URL: str = Field(default="", env="SUPABASE_URL")
+    SUPABASE_KEY: str = Field(default="", env="SUPABASE_KEY")
     SUPABASE_ANON_KEY: str = ""
 
     # JWT Configuration
-    SECRET_KEY: str = Field(..., env="SECRET_KEY")
+    SECRET_KEY: str = Field(default="p2qn3phhWtwPlTUXWOavE9adm9g/GfxYlwWlIY/nWTY5XAcCCFYSTspvmA3zXbJzsxrDaHWSY3ahfNt0EI+2mA==", env="SECRET_KEY")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 8 days
 
