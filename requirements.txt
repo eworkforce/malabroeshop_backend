@@ -6,9 +6,7 @@ python-jose[cryptography]==3.4.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.18
 # PostgreSQL driver for Supabase Postgres support
-psycopg2-binary==2.9.9
 # Supabase Python client
-supabase==2.3.4
 # Email validation for Pydantic models
 email-validator==2.1.0
 # FastAPI-MCP for AI assistant integration
