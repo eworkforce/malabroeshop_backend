@@ -127,7 +127,7 @@ def send_customer_notification(notification_data: PaymentNotificationRequest):
 @router.post("/test-email")
 async def test_email_notification():
     """
-    Test email functionality with sergeziehi@eworkforce.africa
+    Test email functionality
     """
     from app.core.config import settings
     
@@ -136,10 +136,10 @@ async def test_email_notification():
         test_data = PaymentNotificationRequest(
             order_reference="TEST-001",
             customer_name="Test Customer",
-            customer_email="sergeziehi@eworkforce.africa",
+            customer_email="test@example.com",
             customer_phone="+225 XX XXX XX XX",
             total_amount=15000,
-            admin_email="sergeziehi@eworkforce.africa"
+            admin_email=settings.ADMIN_EMAIL
         )
         
         # Try to send emails immediately (not in background for testing)

@@ -46,7 +46,7 @@ substitutions:
   _JWT_SECRET_KEY: 'malabro-super-secret-jwt-key-2024'
   _SMTP_SERVER: 'smtp.gmail.com'
   _SMTP_PORT: '587'
-  _SMTP_USERNAME: 'sergeziehi@eworkforce.africa'
+  _SMTP_USERNAME: 'yayakof45@gmail.com'
   _SMTP_PASSWORD: 'your-gmail-app-password'
   _ADMIN_EMAIL: 'admin@malabro.com'
 

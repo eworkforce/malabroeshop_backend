@@ -1,4 +1,3 @@
-import mimetypes
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
@@ -418,12 +417,12 @@ async def upload_product_image(
         )
     
     # Validate file size (5MB max)
-    max_size = 1024 * 1024  # 1MB
+    max_size = 5 * 1024 * 1024  # 5MB
     file_content = await file.read()
     if len(file_content) > max_size:
         raise HTTPException(
             status_code=400,
-            detail="File size too large. Maximum size is 1MB. Please compress your image."
+            detail="File size too large. Maximum size is 5MB."
         )
     
     # Get file extension
