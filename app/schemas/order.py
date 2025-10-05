@@ -77,3 +77,37 @@ class OrderConfirmation(BaseModel):
     total_amount: float
     customer_email: str
     message: str
+
+# Delivery Preparation Schemas
+class OrderItemSummary(BaseModel):
+    """Summary of an order item for preparation view"""
+    order_id: int
+    order_reference: str
+    customer_name: str
+    quantity: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class ProductPreparationSummary(BaseModel):
+    """Summary of a product across all paid orders"""
+    product_id: int
+    product_name: str
+    total_quantity: int
+    unit: Optional[str] = None
+    order_count: int
+    unique_customers: int
+    orders: List[OrderItemSummary] = []
+    
+    class Config:
+        from_attributes = True
+
+class DeliveryPreparationSummary(BaseModel):
+    """Complete delivery preparation summary"""
+    summary: dict
+    products: List[ProductPreparationSummary]
+    date_range: dict
+    
+    class Config:
+        from_attributes = True

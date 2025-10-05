@@ -90,6 +90,175 @@ def get_all_orders(
     ]
 
 
+
+# ===== DELIVERY PREPARATION ENDPOINT =====
+
+@router.get("/orders/preparation-summary", response_model=dict)
+def get_delivery_preparation_summary(
+    date_from: Optional[str] = Query(None, description="Filter from date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="Filter to date (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """
+    Get delivery preparation summary for all paid orders.
+    
+    Aggregates paid orders by product to help admin prepare deliveries.
+    Only includes orders with status='paid'.
+    
+    Query Parameters:
+    - date_from: Start date filter (optional, format: YYYY-MM-DD)
+    - date_to: End date filter (optional, format: YYYY-MM-DD)
+    
+    Returns:
+    - summary: Overall metrics (total paid orders, unique products, etc.)
+    - products: List of products with aggregated quantities and order details
+    - date_range: Applied date filters
+    """
+    from datetime import datetime
+    from app.models.order import OrderItem
+    from app.models.product import Product
+    from app.models.unit_of_measure import UnitOfMeasure
+    
+    # Build base query for paid orders
+    query = db.query(Order).filter(Order.status == "paid")
+    
+    # Apply date filters if provided
+    date_from_parsed = None
+    date_to_parsed = None
+    
+    if date_from:
+        try:
+            date_from_parsed = datetime.strptime(date_from, "%Y-%m-%d")
+            query = query.filter(Order.created_at >= date_from_parsed)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date_from format. Use YYYY-MM-DD"
+            )
+    
+    if date_to:
+        try:
+            # Add 1 day to include the entire end date
+            date_to_parsed = datetime.strptime(date_to, "%Y-%m-%d")
+            # Set to end of day
+            from datetime import timedelta
+            date_to_end = date_to_parsed + timedelta(days=1)
+            query = query.filter(Order.created_at < date_to_end)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date_to format. Use YYYY-MM-DD"
+            )
+    
+    # Get all paid orders
+    paid_orders = query.all()
+    
+    if not paid_orders:
+        return {
+            "summary": {
+                "total_paid_orders": 0,
+                "total_unique_products": 0,
+                "total_revenue": 0,
+                "last_updated": datetime.utcnow().isoformat()
+            },
+            "products": [],
+            "date_range": {
+                "date_from": date_from,
+                "date_to": date_to
+            }
+        }
+    
+    # Aggregate products from all order items
+    product_aggregation = {}
+    total_revenue = 0
+    
+    for order in paid_orders:
+        total_revenue += order.total_amount
+        
+        for item in order.order_items:
+            product_id = item.product_id
+            
+            if product_id not in product_aggregation:
+                # Get product details
+                product = db.query(Product).filter(Product.id == product_id).first()
+                unit_name = None
+                
+                if product and product.unit_of_measure:
+                    unit_name = product.unit_of_measure.abbreviation or product.unit_of_measure.name
+                
+                product_aggregation[product_id] = {
+                    "product_id": product_id,
+                    "product_name": item.product_name,
+                    "total_quantity": 0,
+                    "unit": unit_name,
+                    "order_count": 0,
+                    "unique_customers": set(),
+                    "orders": []
+                }
+            
+            # Add quantity
+            product_aggregation[product_id]["total_quantity"] += item.quantity
+            
+            # Track unique customers
+            product_aggregation[product_id]["unique_customers"].add(order.customer_email)
+            
+            # Check if this order is already in the list for this product
+            order_already_added = any(
+                o["order_id"] == order.id 
+                for o in product_aggregation[product_id]["orders"]
+            )
+            
+            if not order_already_added:
+                product_aggregation[product_id]["order_count"] += 1
+                product_aggregation[product_id]["orders"].append({
+                    "order_id": order.id,
+                    "order_reference": order.order_reference,
+                    "customer_name": order.customer_name,
+                    "quantity": item.quantity,
+                    "created_at": order.created_at.isoformat()
+                })
+            else:
+                # Update quantity for existing order entry
+                for o in product_aggregation[product_id]["orders"]:
+                    if o["order_id"] == order.id:
+                        o["quantity"] += item.quantity
+                        break
+    
+    # Convert to list and prepare response
+    products_list = []
+    for product_data in product_aggregation.values():
+        # Convert set to count
+        unique_customers_count = len(product_data["unique_customers"])
+        product_data["unique_customers"] = unique_customers_count
+        
+        # Sort orders by created_at (most recent first)
+        product_data["orders"].sort(
+            key=lambda x: x["created_at"],
+            reverse=True
+        )
+        
+        products_list.append(product_data)
+    
+    # Sort products by total quantity (highest first)
+    products_list.sort(key=lambda x: x["total_quantity"], reverse=True)
+    
+    return {
+        "summary": {
+            "total_paid_orders": len(paid_orders),
+            "total_unique_products": len(products_list),
+            "total_revenue": float(total_revenue),
+            "last_updated": datetime.utcnow().isoformat()
+        },
+        "products": products_list,
+        "date_range": {
+            "date_from": date_from,
+            "date_to": date_to
+        }
+    }
+
+
+
 @router.get("/orders/{order_id}", response_model=order_schemas.Order)
 def get_order_details(
     order_id: int,

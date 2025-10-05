@@ -548,3 +548,100 @@ curl http://localhost:8000/
 **Built with FastAPI ⚡ | SQLAlchemy 🗃️ | SendGrid 📧**
 
 *For detailed documentation, see [README.md](README.md)*
+
+---
+
+## 📦 Delivery Preparation Feature
+
+### New Endpoint: Preparation Summary
+
+**Purpose:** Helps admin prepare deliveries by aggregating all paid orders by product.
+
+#### Get Delivery Preparation Summary
+
+```bash
+# Get all paid orders summary
+curl -X GET "http://localhost:8000/api/v1/admin/orders/preparation-summary" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+#### With Date Filters
+
+```bash
+# Filter by date range
+curl -X GET "http://localhost:8000/api/v1/admin/orders/preparation-summary?date_from=2025-10-01&date_to=2025-10-31" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+#### Response Structure
+
+```json
+{
+  "summary": {
+    "total_paid_orders": 11,
+    "total_unique_products": 4,
+    "total_revenue": 2970.0,
+    "last_updated": "2025-10-05T19:52:32"
+  },
+  "products": [
+    {
+      "product_id": 2,
+      "product_name": "Tomates",
+      "total_quantity": 15,
+      "unit": "kg",
+      "order_count": 6,
+      "unique_customers": 2,
+      "orders": [
+        {
+          "order_id": 15,
+          "order_reference": "MALABRO-SLISAE",
+          "customer_name": "Admin",
+          "quantity": 1,
+          "created_at": "2025-09-13T09:07:46"
+        }
+      ]
+    }
+  ],
+  "date_range": {
+    "date_from": "2025-10-01",
+    "date_to": "2025-10-31"
+  }
+}
+```
+
+#### Use Cases
+
+1. **Daily Preparation List**: View what products to prepare for delivery
+2. **Weekly Planning**: Filter by date range for weekly preparation
+3. **Stock Management**: Know exact quantities needed by product
+4. **Customer Overview**: See which customers ordered each product
+
+#### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `date_from` | string | No | Start date (YYYY-MM-DD) |
+| `date_to` | string | No | End date (YYYY-MM-DD) |
+
+#### Status Filter
+
+- Only includes orders with status = `"paid"`
+- Excludes pending, cancelled, shipped, and delivered orders
+- Manual refresh required (no real-time updates)
+
+#### Example Usage
+
+```bash
+# Get today's prep list
+TODAY=$(date +%Y-%m-%d)
+curl -X GET "http://localhost:8000/api/v1/admin/orders/preparation-summary?date_from=$TODAY&date_to=$TODAY" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# Get this week's prep list
+WEEK_START=$(date -d "monday" +%Y-%m-%d)
+TODAY=$(date +%Y-%m-%d)
+curl -X GET "http://localhost:8000/api/v1/admin/orders/preparation-summary?date_from=$WEEK_START&date_to=$TODAY" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+---
