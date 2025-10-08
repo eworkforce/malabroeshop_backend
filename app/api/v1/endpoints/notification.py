@@ -15,7 +15,7 @@ class PaymentNotificationRequest(BaseModel):
     customer_phone: str
     total_amount: float
     payment_method: Optional[str] = "wave"
-    admin_email: EmailStr
+    # Remove admin_email from request - will be loaded from settings
 
 def send_email(to_email: str, subject: str, body: str, is_html: bool = False):
     """Send email using SMTP"""
@@ -60,7 +60,7 @@ def send_email(to_email: str, subject: str, body: str, is_html: bool = False):
         print(f"Failed to send email: {e}")
         return False
 
-def send_admin_notification(notification_data: PaymentNotificationRequest):
+def send_admin_notification(notification_data: PaymentNotificationRequest, admin_email: str):
     """Send notification to admin about payment start"""
     subject = f"🔔 Nouveau paiement initié - Commande {notification_data.order_reference}"
     
@@ -87,7 +87,7 @@ def send_admin_notification(notification_data: PaymentNotificationRequest):
     </html>
     """
     
-    return send_email(notification_data.admin_email, subject, body, is_html=True)
+    return send_email(admin_email, subject, body, is_html=True)
 
 def send_customer_notification(notification_data: PaymentNotificationRequest):
     """Send notification to customer about payment process"""
@@ -138,12 +138,11 @@ async def test_email_notification():
             customer_name="Test Customer",
             customer_email="test@example.com",
             customer_phone="+225 XX XXX XX XX",
-            total_amount=15000,
-            admin_email=settings.ADMIN_EMAIL
+            total_amount=15000
         )
         
         # Try to send emails immediately (not in background for testing)
-        admin_result = send_admin_notification(test_data)
+        admin_result = send_admin_notification(test_data, settings.ADMIN_EMAIL)
         customer_result = send_customer_notification(test_data)
         
         return {
@@ -168,8 +167,10 @@ async def notify_payment_started(
     Send notifications when a customer starts the payment process
     """
     try:
-        # Send notifications in background
-        background_tasks.add_task(send_admin_notification, notification_data)
+        from app.core.config import settings
+        
+        # Send notifications in background using admin email from settings
+        background_tasks.add_task(send_admin_notification, notification_data, settings.ADMIN_EMAIL)
         background_tasks.add_task(send_customer_notification, notification_data)
         
         return {
