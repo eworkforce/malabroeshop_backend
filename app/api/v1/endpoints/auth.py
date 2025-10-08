@@ -1,13 +1,14 @@
 from datetime import timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app import crud, schemas
 from app.db.session import get_db
 from app.core.auth import create_access_token, verify_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.api.v1.endpoints.notification import send_welcome_email, send_admin_new_user_notification
 
 router = APIRouter()
 
@@ -39,14 +40,56 @@ def get_current_active_admin_user(current_user: schemas.User = Depends(get_curre
     return current_user
 
 @router.post("/register", response_model=schemas.User)
-def register_user(*, db: Session = Depends(get_db), user_in: schemas.UserCreate) -> Any:
+def register_user(
+    *, 
+    db: Session = Depends(get_db), 
+    user_in: schemas.UserCreate,
+    background_tasks: BackgroundTasks
+) -> Any:
+    """
+    Register a new user and send welcome/notification emails
+    """
+    # Check if user already exists
     user = crud.user.get_by_email(db, email=user_in.email)
     if user:
         raise HTTPException(
             status_code=400,
             detail="The user with this email already exists in the system.",
         )
+    
+    # Create new user
     user = crud.user.create(db, obj_in=user_in)
+    
+    # Format registration date
+    from datetime import datetime
+    registration_date = user.created_at.strftime('%d/%m/%Y à %H:%M') if user.created_at else datetime.now().strftime('%d/%m/%Y à %H:%M')
+    
+    # Send email notifications in background (won't block the response)
+    try:
+        # Welcome email to new user
+        background_tasks.add_task(
+            send_welcome_email,
+            user.email,
+            user.full_name,
+            registration_date
+        )
+        
+        # Notification email to admin
+        background_tasks.add_task(
+            send_admin_new_user_notification,
+            user.email,
+            user.full_name,
+            registration_date,
+            user.is_active,
+            user.is_admin
+        )
+        
+        print(f"✅ Email notifications queued for new user: {user.email}")
+        
+    except Exception as e:
+        # Log error but don't fail registration
+        print(f"⚠️ Failed to queue email notifications: {e}")
+    
     return user
 
 @router.post("/login", response_model=schemas.Token)

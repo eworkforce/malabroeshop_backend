@@ -183,3 +183,249 @@ async def notify_payment_started(
             status_code=500,
             detail=f"Erreur lors de l'envoi des notifications: {str(e)}"
         )
+
+# ============================================
+# User Registration Email Notifications
+# ============================================
+
+def send_welcome_email(user_email: str, user_name: str, registration_date: str) -> bool:
+    """Send welcome email to newly registered user"""
+    from app.core.config import settings
+    
+    subject = "Bienvenue chez MALABRO - Votre compte a été créé ✨"
+    
+    # Sanitize user input to prevent injection
+    safe_name = user_name.replace('<', '&lt;').replace('>', '&gt;')
+    safe_email = user_email.replace('<', '&lt;').replace('>', '&gt;')
+    
+    body = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
+            <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px 10px 0 0;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🎉 Bienvenue chez MALABRO!</h1>
+            </div>
+            
+            <div style="padding: 30px; background-color: #f8f9fa; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #2c3e50; margin-top: 0;">Bonjour {safe_name}!</h2>
+                
+                <p style="font-size: 16px; line-height: 1.8;">
+                    Nous sommes ravis de vous compter parmi nos membres. Votre compte a été créé avec succès!
+                </p>
+                
+                <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #667eea;">
+                    <h3 style="margin-top: 0; color: #667eea;">📋 Informations de votre compte</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 8px 0;"><strong>📧 Email:</strong></td>
+                            <td style="padding: 8px 0;">{safe_email}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0;"><strong>👤 Nom:</strong></td>
+                            <td style="padding: 8px 0;">{safe_name}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0;"><strong>📅 Date d'inscription:</strong></td>
+                            <td style="padding: 8px 0;">{registration_date}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div style="background-color: #e8f5e9; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h3 style="margin-top: 0; color: #2e7d32;">🚀 Prochaines étapes</h3>
+                    <ol style="margin: 10px 0; padding-left: 20px; line-height: 2;">
+                        <li>Connectez-vous avec votre email et mot de passe</li>
+                        <li>Parcourez notre catalogue de produits</li>
+                        <li>Ajoutez vos articles préférés au panier</li>
+                        <li>Passez votre première commande en toute simplicité</li>
+                    </ol>
+                </div>
+                
+                <div style="background-color: #fff3e0; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #ff9800;">
+                    <h3 style="margin-top: 0; color: #e65100;">💡 Besoin d'aide?</h3>
+                    <p style="margin: 10px 0;">
+                        Notre équipe est à votre disposition pour répondre à toutes vos questions.
+                    </p>
+                    <p style="margin: 10px 0;">
+                        <strong>Email de support:</strong> {settings.ADMIN_EMAIL}<br>
+                        <strong>Réponse:</strong> Sous 24h maximum
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <p style="font-size: 18px; color: #2c3e50; margin: 0;">
+                        Merci de nous faire confiance!
+                    </p>
+                </div>
+            </div>
+            
+            <div style="text-align: center; padding: 20px; margin-top: 20px;">
+                <p style="font-size: 16px; color: #2c3e50; font-weight: bold; margin: 10px 0;">
+                    Cordialement,<br>
+                    L'équipe MALABRO
+                </p>
+            </div>
+            
+            <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
+            
+            <div style="text-align: center; padding: 10px;">
+                <p style="font-size: 12px; color: #999; margin: 5px 0;">
+                    Cet email a été envoyé automatiquement suite à votre inscription sur MALABRO.
+                </p>
+                <p style="font-size: 12px; color: #999; margin: 5px 0;">
+                    © {datetime.now().year} MALABRO - Tous droits réservés
+                </p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    try:
+        result = send_email(user_email, subject, body, is_html=True)
+        if result:
+            print(f"✅ Welcome email sent successfully to {user_email}")
+        else:
+            print(f"⚠️ Failed to send welcome email to {user_email}")
+        return result
+    except Exception as e:
+        print(f"❌ Error sending welcome email: {e}")
+        return False
+
+
+def send_admin_new_user_notification(user_email: str, user_name: str, registration_date: str, is_active: bool, is_admin: bool) -> bool:
+    """Send notification to admin about new user registration"""
+    from app.core.config import settings
+    
+    # Sanitize user input
+    safe_name = user_name.replace('<', '&lt;').replace('>', '&gt;')
+    safe_email = user_email.replace('<', '&lt;').replace('>', '&gt;')
+    
+    subject = f"🆕 Nouvel utilisateur enregistré - {safe_name}"
+    
+    user_status = "✅ Actif" if is_active else "❌ Inactif"
+    user_type = "👑 Administrateur" if is_admin else "👤 Utilisateur standard"
+    
+    body = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px 10px 0 0; text-align: center;">
+                <h2 style="color: #ffffff; margin: 0;">🆕 Nouvelle inscription MALABRO</h2>
+            </div>
+            
+            <div style="background-color: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+                <p style="font-size: 16px; color: #2c3e50;">
+                    Un nouvel utilisateur vient de s'inscrire sur la plateforme MALABRO.
+                </p>
+                
+                <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
+                    <h3 style="margin-top: 0; color: #667eea;">👤 Détails de l'utilisateur</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="border-bottom: 1px solid #e0e0e0;">
+                            <td style="padding: 12px 0; font-weight: bold; width: 40%;">Nom complet:</td>
+                            <td style="padding: 12px 0;">{safe_name}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e0e0e0;">
+                            <td style="padding: 12px 0; font-weight: bold;">Email:</td>
+                            <td style="padding: 12px 0;">{safe_email}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e0e0e0;">
+                            <td style="padding: 12px 0; font-weight: bold;">Date d'inscription:</td>
+                            <td style="padding: 12px 0;">{registration_date}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e0e0e0;">
+                            <td style="padding: 12px 0; font-weight: bold;">Statut:</td>
+                            <td style="padding: 12px 0;">{user_status}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px 0; font-weight: bold;">Type de compte:</td>
+                            <td style="padding: 12px 0;">{user_type}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2196f3;">
+                    <p style="margin: 0; color: #1565c0;">
+                        <strong>ℹ️ Action automatique:</strong><br>
+                        Un email de bienvenue a été automatiquement envoyé à l'utilisateur.
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 25px 0; padding: 20px; background-color: #ffffff; border-radius: 8px;">
+                    <p style="font-size: 14px; color: #666; margin: 0;">
+                        Cet utilisateur peut maintenant se connecter et passer des commandes sur la plateforme.
+                    </p>
+                </div>
+            </div>
+            
+            <div style="text-align: center; padding: 20px;">
+                <p style="color: #666; margin: 5px 0;">
+                    Cordialement,<br>
+                    <strong>Système MALABRO</strong>
+                </p>
+            </div>
+            
+            <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
+            
+            <div style="text-align: center;">
+                <p style="font-size: 11px; color: #999; margin: 5px 0;">
+                    Cette notification a été générée automatiquement par le système MALABRO.
+                </p>
+                <p style="font-size: 11px; color: #999; margin: 5px 0;">
+                    © {datetime.now().year} MALABRO - Notification système
+                </p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    try:
+        result = send_email(settings.ADMIN_EMAIL, subject, body, is_html=True)
+        if result:
+            print(f"✅ Admin notification sent successfully for new user: {user_email}")
+        else:
+            print(f"⚠️ Failed to send admin notification for new user: {user_email}")
+        return result
+    except Exception as e:
+        print(f"❌ Error sending admin notification: {e}")
+        return False
+
+
+@router.post("/test-registration-email")
+async def test_registration_email():
+    """
+    Test registration email functionality
+    """
+    from app.core.config import settings
+    
+    try:
+        test_user_email = "test.user@example.com"
+        test_user_name = "Test User"
+        test_date = datetime.now().strftime('%d/%m/%Y à %H:%M')
+        
+        # Send both emails
+        welcome_result = send_welcome_email(test_user_email, test_user_name, test_date)
+        admin_result = send_admin_new_user_notification(
+            test_user_email, 
+            test_user_name, 
+            test_date,
+            is_active=True,
+            is_admin=False
+        )
+        
+        return {
+            "message": "Test d'email d'inscription effectué",
+            "welcome_email_sent": welcome_result,
+            "admin_email_sent": admin_result,
+            "test_user_email": test_user_email,
+            "admin_email": settings.ADMIN_EMAIL,
+            "smtp_configured": bool(settings.SMTP_USERNAME and settings.SMTP_PASSWORD)
+        }
+        
+    except Exception as e:
+        return {
+            "error": f"Erreur lors du test d'email d'inscription: {str(e)}",
+            "smtp_configured": bool(settings.SMTP_USERNAME and settings.SMTP_PASSWORD)
+        }
